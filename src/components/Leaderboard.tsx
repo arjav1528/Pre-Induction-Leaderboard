@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { ref, onValue, off, push, set, get } from 'firebase/database';
+import { ref, onValue, set, get } from 'firebase/database';
 import { database } from '@/lib/firebase';
 import { COMPETITION_CONFIG, getCompetitionDuration } from '@/lib/competition-config';
 
@@ -24,6 +24,18 @@ interface CompetitionState {
   endTime: number | null;
 }
 
+interface UserData {
+  user?: {
+    Name?: string;
+    email?: string;
+  };
+  TotalScore?: number;
+  EscapeRoomScore?: number;
+  PacmanScore?: number;
+  PizzeriaScore?: number;
+  TetrisScore?: number;
+}
+
 export default function Leaderboard() {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(false);
@@ -43,6 +55,80 @@ export default function Leaderboard() {
     const minutes = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const endCompetition = useCallback(async () => {
+    try {
+      // Save to Firebase
+      const competitionRef = ref(database, COMPETITION_CONFIG.FIREBASE_PATHS.COMPETITION);
+      await set(competitionRef, {
+        isActive: false,
+        startTime: competitionState.startTime,
+        endTime: Date.now()
+      });
+
+      // Update local state
+      setCompetitionState(prev => ({
+        ...prev,
+        isActive: false,
+        endTime: Date.now()
+      }));
+
+      setIsTimerRunning(false);
+      setIsCompetitionCompleted(true);
+      if (unsubscribe) {
+        unsubscribe();
+        setUnsubscribe(null);
+      }
+      setTimeLeft(0);
+      
+      // Load final leaderboard data
+      await loadFinalLeaderboard();
+    } catch (err) {
+      console.error('Error ending competition:', err);
+    }
+  }, [competitionState.startTime, unsubscribe]);
+
+  const loadFinalLeaderboard = async () => {
+    try {
+      setLoading(true);
+      const dbRef = ref(database);
+      const snapshot = await get(dbRef);
+      
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        const entries: LeaderboardEntry[] = [];
+        
+        Object.entries(data).forEach(([userId, userData]) => {
+          const typedUserData = userData as UserData;
+          if (typedUserData.user && typedUserData.TotalScore !== undefined) {
+            entries.push({
+              id: userId,
+              name: typedUserData.user.Name || 'Unknown',
+              email: typedUserData.user.email || 'No email',
+              totalScore: typedUserData.TotalScore || 0,
+              gameScores: {
+                escapeRoom: typedUserData.EscapeRoomScore || 0,
+                pacman: typedUserData.PacmanScore || 0,
+                pizzeria: typedUserData.PizzeriaScore || 0,
+                tetris: typedUserData.TetrisScore || 0,
+              },
+            });
+          }
+        });
+        
+        entries.sort((a, b) => b.totalScore - a.totalScore);
+        setLeaderboard(entries);
+        setLoading(false);
+      } else {
+        setLeaderboard([]);
+        setLoading(false);
+      }
+    } catch (err) {
+      console.error('Error loading final leaderboard:', err);
+      setError('Failed to load final results');
+      setLoading(false);
+    }
   };
 
   // Load competition state from Firebase on component mount
@@ -89,48 +175,7 @@ export default function Leaderboard() {
     };
 
     loadCompetitionState();
-  }, []);
-
-  const loadFinalLeaderboard = async () => {
-    try {
-      setLoading(true);
-      const dbRef = ref(database);
-      const snapshot = await get(dbRef);
-      
-      if (snapshot.exists()) {
-        const data = snapshot.val();
-        const entries: LeaderboardEntry[] = [];
-        
-        Object.entries(data).forEach(([userId, userData]: [string, any]) => {
-          if (userData.user && userData.TotalScore !== undefined) {
-            entries.push({
-              id: userId,
-              name: userData.user.Name || 'Unknown',
-              email: userData.user.email || 'No email',
-              totalScore: userData.TotalScore || 0,
-              gameScores: {
-                escapeRoom: userData.EscapeRoomScore || 0,
-                pacman: userData.PacmanScore || 0,
-                pizzeria: userData.PizzeriaScore || 0,
-                tetris: userData.TetrisScore || 0,
-              },
-            });
-          }
-        });
-        
-        entries.sort((a, b) => b.totalScore - a.totalScore);
-        setLeaderboard(entries);
-        setLoading(false);
-      } else {
-        setLeaderboard([]);
-        setLoading(false);
-      }
-    } catch (err) {
-      console.error('Error loading final leaderboard:', err);
-      setError('Failed to load final results');
-      setLoading(false);
-    }
-  };
+  }, [endCompetition]);
 
   const startTimer = async () => {
     try {
@@ -158,38 +203,6 @@ export default function Leaderboard() {
     } catch (err) {
       console.error('Error starting competition:', err);
       setError('Failed to start competition');
-    }
-  };
-
-  const endCompetition = async () => {
-    try {
-      // Save to Firebase
-      const competitionRef = ref(database, COMPETITION_CONFIG.FIREBASE_PATHS.COMPETITION);
-      await set(competitionRef, {
-        isActive: false,
-        startTime: competitionState.startTime,
-        endTime: Date.now()
-      });
-
-      // Update local state
-      setCompetitionState(prev => ({
-        ...prev,
-        isActive: false,
-        endTime: Date.now()
-      }));
-
-      setIsTimerRunning(false);
-      setIsCompetitionCompleted(true);
-      if (unsubscribe) {
-        unsubscribe();
-        setUnsubscribe(null);
-      }
-      setTimeLeft(0);
-      
-      // Load final leaderboard data
-      await loadFinalLeaderboard();
-    } catch (err) {
-      console.error('Error ending competition:', err);
     }
   };
 
@@ -229,18 +242,19 @@ export default function Leaderboard() {
           const data = snapshot.val();
           const entries: LeaderboardEntry[] = [];
           
-          Object.entries(data).forEach(([userId, userData]: [string, any]) => {
-            if (userData.user && userData.TotalScore !== undefined) {
+          Object.entries(data).forEach(([userId, userData]) => {
+            const typedUserData = userData as UserData;
+            if (typedUserData.user && typedUserData.TotalScore !== undefined) {
               entries.push({
                 id: userId,
-                name: userData.user.Name || 'Unknown',
-                email: userData.user.email || 'No email',
-                totalScore: userData.TotalScore || 0,
+                name: typedUserData.user.Name || 'Unknown',
+                email: typedUserData.user.email || 'No email',
+                totalScore: typedUserData.TotalScore || 0,
                 gameScores: {
-                  escapeRoom: userData.EscapeRoomScore || 0,
-                  pacman: userData.PacmanScore || 0,
-                  pizzeria: userData.PizzeriaScore || 0,
-                  tetris: userData.TetrisScore || 0,
+                  escapeRoom: typedUserData.EscapeRoomScore || 0,
+                  pacman: typedUserData.PacmanScore || 0,
+                  pizzeria: typedUserData.PizzeriaScore || 0,
+                  tetris: typedUserData.TetrisScore || 0,
                 },
               });
             }
@@ -302,7 +316,7 @@ export default function Leaderboard() {
     }, COMPETITION_CONFIG.TIMER.UPDATE_INTERVAL); // Use config
 
     return () => clearInterval(interval);
-  }, [isTimerRunning]);
+  }, [isTimerRunning, endCompetition]);
 
   // Show completion screen with top 3 winners
   if (isCompetitionCompleted) {
