@@ -310,7 +310,7 @@ export default function Leaderboard() {
       <div className="w-full max-w-6xl mx-auto">
         <div className="text-center">
           <h1 className="text-4xl font-bold mb-8 text-gray-800">
-            🏆 Competition Complete!
+            🏆 Pre-Induction Complete!
           </h1>
           
           {/* Winners Section */}
@@ -456,7 +456,7 @@ export default function Leaderboard() {
               onClick={resetCompetition}
               className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-colors"
             >
-              🔄 Start New Competition
+              🔄 Start New Game
             </button>
           </div>
         </div>
@@ -469,7 +469,7 @@ export default function Leaderboard() {
       <div className="w-full max-w-6xl mx-auto">
         <div className="text-center">
           <h1 className="text-3xl font-bold mb-8 text-gray-800">
-            🏆 Game Leaderboard
+            🏆 Pre-Induction Leaderboard
           </h1>
           <div className="bg-white rounded-lg shadow-lg p-8 max-w-md mx-auto">
             <p className="text-lg text-gray-600 mb-6">
@@ -490,7 +490,7 @@ export default function Leaderboard() {
   return (
     <div className="w-full max-w-6xl mx-auto">
       <h1 className="text-3xl font-bold text-center mb-8 text-gray-800">
-        🏆 Game Leaderboard
+        🏆 Pre-Induction Leaderboard
       </h1>
       
       {/* Timer Display */}
@@ -532,7 +532,7 @@ export default function Leaderboard() {
           <span className={`w-2 h-2 rounded-full mr-2 ${
             isTimerRunning ? 'bg-green-500' : 'bg-gray-500'
           }`}></span>
-          {isTimerRunning ? 'Competition Active - Fetching Data' : 'Competition Inactive'}
+          {isTimerRunning ? 'Active - Fetching Data' : 'Inactive'}
         </div>
       </div>
       
