@@ -1,5 +1,5 @@
 export const COMPETITION_CONFIG = {
-  DURATION_SECONDS: 20 * 1000 * 60, // 20 minutes
+  DURATION_SECONDS: 20 * 60, // 20 minutes
 
   DURATION_MS: 20 * 1000 * 60, // 20 minutes in milliseconds
 
