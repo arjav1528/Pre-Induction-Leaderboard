@@ -1,8 +1,8 @@
 export const COMPETITION_CONFIG = {
-  DURATION_SECONDS: 10, // 10 seconds
-  
-  DURATION_MS: 10 * 1000, // 10 seconds in milliseconds
-  
+  DURATION_SECONDS: 20 * 1000 * 60, // 20 minutes
+
+  DURATION_MS: 20 * 1000 * 60, // 20 minutes in milliseconds
+
   FIREBASE_PATHS: {
     COMPETITION: 'competition',
     LEADERBOARD: 'leaderboard'
